@@ -37,7 +37,7 @@ optional = OptionGroup(parser, "Optional parameters", "These parameters are opti
 
 required.add_option( "-i", "--input-directory", action="store", type="string", dest="inDir", help="Directory containinig subdirectories of dicom files, organized by series")
 optional.add_option( "-o", "--output-directory", action="store", type="string", dest="outDir", help="Output directory")
-optional.add_option( "-r", "-rename", action="store_true", default=False, help="Rename files by SOPInstanceUID [default=%default]")
+optional.add_option( "-r", "--rename", action="store_true", default=False, help="Rename files by SOPInstanceUID [default=%default]")
 optional.add_option( "-v", "--verbose", action="store_true", default=False, help="Verbose output [default=%default]")
 
 parser.add_option_group(required)
