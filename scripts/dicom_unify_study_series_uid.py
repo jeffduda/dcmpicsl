@@ -17,31 +17,16 @@ from pydicom.dataset import Dataset
 from optparse import OptionParser
 from optparse import OptionGroup
 from pydicom.errors import InvalidDicomError
-from pydicom.uid import ExplicitVRLittleEndian
-from pydicom.uid import ExplicitVRBigEndian
-from pynetdicom.sop_class import CTImageStorage, MRImageStorage
 
-
-def illegaltag_callback(dataset, data_element):
-    if data_element.tag.group == 0x0001:
-        del dataset[data_element.tag]
-    if data_element.tag.group == 0x0003:
-        del dataset[data_element.tag]
-    if data_element.tag.group == 0x0005:
-        del dataset[data_element.tag]
-    if data_element.tag.group == 0x0007:
-        del dataset[data_element.tag]
 
 parser = OptionParser()
 
 required = OptionGroup(parser, "Required parameters", "These parameters are required")
 optional = OptionGroup(parser, "Optional parameters", "These parameters are optional")
 
-required.add_option( "-i", "--input-directory", action="store", type="string", dest="inDir", help="Directory containing subdirectories of dicom files, organized by series")
+required.add_option( "-i", "--input-directory", action="store", type="string", dest="inDir", help="Directory containinig dicom files")
 optional.add_option( "-o", "--output-directory", action="store", type="string", dest="outDir", help="Output directory")
-optional.add_option( "-r", "--rename", action="store_true", default=False, help="Rename files by SOPInstanceUID [default=%default]")
 optional.add_option( "-v", "--verbose", action="store_true", default=False, help="Verbose output [default=%default]")
-optional.add_option( "-c", "--class", action="store", type="string", dest="modality", help="Modality (CT or MR)")
 
 parser.add_option_group(required)
 parser.add_option_group(optional)
@@ -78,8 +63,8 @@ studyUID=pydicom.uid.generate_uid()
 for s in subdirs:
     seriesUID=pydicom.uid.generate_uid()
     onlyfiles = [f for f in listdir(join(options.inDir,s)) if isfile(join(options.inDir,s,f))]
-    #print(s+" ("+str(len(onlyfiles))+" files)")
-    #print( "  " + str(studyUID) + "  ->  " + str(seriesUID) )
+    print(s+" ("+str(len(onlyfiles))+" files)")
+    print( "  " + str(studyUID) + "  ->  " + str(seriesUID) )
 
     if (options.outDir != None):
         os.mkdir( join(options.outDir,s) )
@@ -112,56 +97,18 @@ for s in subdirs:
                     dcf.SOPInstanceUID = instanceUID
                 else:
                     dcf.add_new(0x00080018, 'UI', instanceUID)
-                if "MediaStorageSOPInstanceUID" in dcf.file_meta:
-                    dcf.file_meta.MediaStorageSOPInstanceUID = instanceUID
+
+                mrUID = '1.2.840.10008.5.1.4.1.1.4'
+                if "SOPClassUID" in dcf:
+                    dcf.SOPClassUID = mrUID
                 else:
-                    dcf.file_meta.add_new(0x00020003, 'UI', instanceUID)
+                    dcf.add_new(0x00080016, 'UI', mrUID)
 
-                if ( len(options.modality) > 0 ):
-                    modUID = ''
-                    if options.modality == "MR":
-                        modUID = MRImageStorage
-                    if options.modality == "CT":
-                        modUID = CTImageStorage
-
-                    if "SOPClassUID" in dcf:
-                        dcf.SOPClassUID = modUID
-                    else:
-                        dcf.add_new(0x00080016, 'UI', modUID)
-
-                    if "MediaStorageSOPClassUID" in dcf.file_meta:
-                        dcf.file_meta.MediaStorageSOPClassUID = modUID
-                    else:
-                        dcf.file_meta.add_new(0x00020002, 'UI', modUID)
+                dcf.save_as(join(options.outDir,s,f))
 
 
-                endianUID = pydicom.uid.ExplicitVRLittleEndian
 
-                if ( dcf.is_little_endian ):
-                    if ( dcf.is_implicit_VR ):
-                        endianUID = pydicom.uid.ImplicitVRLittleEndian
-                else:
-                    endianUID = pydicom.uid.ExplicitVRBigEndian
-                    if ( dcf.is_implicit_VR ):
-                        endianUID = pydicom.uid.ImplicitVRBigEndian
-                if "TransferSyntaxUID" in dcf.file_meta:
-                    dcf.file_meta.TransferSyntaxUID = endianUID
-                else:
-                    dcf.file_meta.add_new(0x00020010, 'UI', endianUID)
 
-                implementUID = '1.2.826.0.1.3680043.8.498.1'
-                if "ImplementationClassUID" in dcf.file_meta:
-                    dcf.file_meta.ImplementationClassUID = implementUID
-                else:
-                    dcf.file_meta.add_new(0x00020012, 'UI', implementUID)
-
-                #dcf.remove_private_tags()
-                dcf.walk(illegaltag_callback)
-
-                if ( options.rename ):
-                    dcf.save_as(join(options.outDir,s,instanceUID))
-                else:
-                    dcf.save_as(join(options.outDir,s,f))
 
 
 #IFS=','
